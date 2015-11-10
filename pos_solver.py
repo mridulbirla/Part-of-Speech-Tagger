@@ -71,5 +71,5 @@ class Solver:
         elif algo == "Best":
             return self.best(sentence)
         else:
-            print "Unknown algo!"
+            print "Unknown algorithm!"
 

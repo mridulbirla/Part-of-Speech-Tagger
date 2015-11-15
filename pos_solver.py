@@ -40,46 +40,43 @@ class Solver:
     # Do the training!
     #
     def train(self, data):
-        test_data = [line.rstrip(' \n').split(" ") for line in open("bc.train", "r")]
-        word_speech={}
-        next_speech={}
-        for line in test_data:
-            for i in range(0,len(line)-1,2):
-                x=line[i].lower()+'_'+line[i+1]
-                word_speech.setdefault(x,0)
-                word_speech[x]+=1
+        for line in data:
+            for index in range(0,len(line[1])):
+                if index < (len(line[1]))-1:
+                    x=line[1][index+1].lower()+'_'+line[1][index]
+                    probability_next_speech.setdefault(x,0)
+                    probability_next_speech[x]+=1
+                x=line[0][index].lower()+'_'+line[1][index]
+                probability_word_speech.setdefault(x,0)
+                probability_word_speech[x] +=1
+                probability_speech.setdefault(line[1][index],0)
+                probability_speech[line[1][index]] += 1
 
-        for line in test_data:
-            for i in range(1,len(line)-2,2):
-                x=line[i+2]+'_'+line[i]
-                next_speech.setdefault(x,0)
-                next_speech[x]+=1
-        merged_test_data = list(itertools.chain.from_iterable(test_data))
-        # p=list(str(",. (*&^%$£@!/`'\?][=-#¢"))
-        # p+=['','\n','``','\'\''] #,'NOUN','VERB','ADV','CONJ','DET','PRT','NUM','ADJ','X','PRON','ADP']
-        part_of_speech = ['NOUN', 'VERB', 'ADV', 'CONJ', 'DET', 'PRT', 'NUM', 'ADJ', 'X', 'PRON', 'ADP', '.']
-        # new_list=[x for x in merged if x in p]
-        new_list = []
-        for i in range(0, len(test_data)):
-            if not (i != 0 and (merged_test_data[i] == '.' and merged_test_data[i - 1] == merged_test_data[i])) and \
-                            merged_test_data[i] in part_of_speech:
-                new_list.append(merged_test_data[i])
-
-        count = Counter(map(lambda x: x.lower(), new_list))
-        m = dict(count)
-        count123 = float(sum(m.values()))
-        [self.update(m, k, count123) for k in m.keys()]
-        #  count=Counter(new_list)
-        count123 = float(sum(word_speech.values()))
-        [self.update(word_speech, k, count123) for k in word_speech.keys()]
-        count123 = float(sum(next_speech.values()))
-        [self.update(next_speech, k, count123) for k in next_speech.keys()]
-
-        print count
-
+        [self.update(probability_word_speech, k, sum(probability_word_speech.values())) for k in probability_word_speech.keys()]
+        [self.update(probability_next_speech, k, sum(probability_next_speech.values())) for k in probability_next_speech.keys()]
+        [self.update(probability_speech, k, sum(probability_speech.values())) for k in probability_speech.keys()]
     # Functions for each algorithm.
     #
     def naive(self, sentence):
+        speech=[]
+        for word in sentence:
+            max=0
+            s=''
+            for speech in probability_speech.keys():
+                k=word+'_'+speech
+                if k not in probability_word_speech.keys():
+                    continue
+                prob_wrd_spch= probability_word_speech[k]
+                sum=0.0
+                for speech2 in probability_speech.keys():
+                    k=word+'_'+speech2
+                    prob_wrd_spch= probability_word_speech[k]
+                    sum+=(prob_wrd_spch*probability_speech[speech2])
+                new_prob=(prob_wrd_spch*probability_speech[speech])/sum
+                if new_prob>max:
+                    s=speech
+                    max=new_prob
+
         return [[["noun"] * len(sentence)], []]
 
     def mcmc(self, sentence, sample_count):
@@ -120,7 +117,12 @@ class Solver:
         else:
             print "Unknown algorithm!"
 
-
+'''
 s = Solver()
 d = []
-s.train(d)
+'''
+probability_speech={}
+probability_next_speech={}
+probability_word_speech={}
+
+#s.train(d)

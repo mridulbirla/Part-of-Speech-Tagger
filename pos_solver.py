@@ -31,53 +31,75 @@ import operator
 class Solver:
     # Calculate the log of the posterior probability of a given sentence
     #  with a given part-of-speech labeling
+    def __init__(self):
+        self.probability_speech={}
+        self.probability_next_speech={}
+        self.probability_word_speech={}
+
     def posterior(self, sentence, label):
         return 0
 
     def update(self, m, k, count):
-        m[k] = round(m[k] / count, 10)
+        m[k] = float(m[k]) / count
 
     # Do the training!
     #
     def train(self, data):
+        print "Inside training"
         for line in data:
             for index in range(0,len(line[1])):
                 if index < (len(line[1]))-1:
                     x=line[1][index+1].lower()+'_'+line[1][index]
-                    probability_next_speech.setdefault(x,0)
-                    probability_next_speech[x]+=1
+                    self.probability_next_speech.setdefault(x,0)
+                    self.probability_next_speech[x]+=1
                 x=line[0][index].lower()+'_'+line[1][index]
-                probability_word_speech.setdefault(x,0)
-                probability_word_speech[x] +=1
-                probability_speech.setdefault(line[1][index],0)
-                probability_speech[line[1][index]] += 1
-
-        [self.update(probability_word_speech, k, sum(probability_word_speech.values())) for k in probability_word_speech.keys()]
-        [self.update(probability_next_speech, k, sum(probability_next_speech.values())) for k in probability_next_speech.keys()]
-        [self.update(probability_speech, k, sum(probability_speech.values())) for k in probability_speech.keys()]
+                self.probability_word_speech.setdefault(x,0)
+                self.probability_word_speech[x] +=1
+                self.probability_speech.setdefault(line[1][index],0)
+                self.probability_speech[line[1][index]] += 1
+        print "BC"
+        [self.update(self.probability_word_speech, k, sum(self.probability_word_speech.values())) for k in self.probability_word_speech.keys()]
+        print "B"
+        [self.update(self.probability_next_speech, k, sum(self.probability_next_speech.values())) for k in self.probability_next_speech.keys()]
+        print "BB"
+        [self.update(self.probability_speech, k, sum(self.probability_speech.values())) for k in self.probability_speech.keys()]
     # Functions for each algorithm.
     #
     def naive(self, sentence):
-        speech=[]
+        speech_map=[]
+        prob_map=[]
+        flag=0
         for word in sentence:
             max=0
             s=''
-            for speech in probability_speech.keys():
+            flag=1
+            if  word=="calmly":
+                print "a"
+            for speech in self.probability_speech.keys():
                 k=word+'_'+speech
-                if k not in probability_word_speech.keys():
+                if k not in self.probability_word_speech.keys():
                     continue
-                prob_wrd_spch= probability_word_speech[k]
+                prob_wrd_spch= self.probability_word_speech[k]
                 sum=0.0
-                for speech2 in probability_speech.keys():
+                for speech2 in self.probability_speech.keys():
                     k=word+'_'+speech2
-                    prob_wrd_spch= probability_word_speech[k]
-                    sum+=(prob_wrd_spch*probability_speech[speech2])
-                new_prob=(prob_wrd_spch*probability_speech[speech])/sum
+                    if k not in self.probability_word_speech.keys():
+                        continue
+                    prob_wrd_spch= self.probability_word_speech[k]
+                    new_prob=0.0
+                    sum+=(prob_wrd_spch*self.probability_speech[speech2])
+                    if sum!=0:
+                        new_prob=(prob_wrd_spch*self.probability_speech[speech])/sum
+
                 if new_prob>max:
                     s=speech
                     max=new_prob
+            speech_map=speech_map+[s]
+            prob_map=prob_map+[max]
 
-        return [[["noun"] * len(sentence)], []]
+        p=[[speech_map],[prob_map]]
+        return p
+       # return [[["noun"] * len(sentence)], []]
 
     def mcmc(self, sentence, sample_count):
         return [[["noun"] * len(sentence)] * sample_count, []]
@@ -117,12 +139,9 @@ class Solver:
         else:
             print "Unknown algorithm!"
 
-'''
-s = Solver()
-d = []
-'''
-probability_speech={}
-probability_next_speech={}
-probability_word_speech={}
 
-#s.train(d)
+s = Solver()
+d=[]
+
+
+s.train(d)

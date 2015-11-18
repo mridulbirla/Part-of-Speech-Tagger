@@ -81,6 +81,7 @@ class Solver:
                     continue
                 prob_wrd_spch= self.probability_word_speech[k]
                 sum=0.0
+                '''
                 for speech2 in self.probability_speech.keys():
                     k=word+'_'+speech2
                     if k not in self.probability_word_speech.keys():
@@ -88,16 +89,20 @@ class Solver:
                     prob_wrd_spch= self.probability_word_speech[k]
                     new_prob=0.0
                     sum+=(prob_wrd_spch*self.probability_speech[speech2])
-                    if sum!=0:
-                        new_prob=(prob_wrd_spch*self.probability_speech[speech])/sum
+                if sum!=0:
+                '''
+                new_prob=(prob_wrd_spch*self.probability_speech[speech])
 
                 if new_prob>max:
                     s=speech
                     max=new_prob
-            speech_map=speech_map+[s]
-            prob_map=prob_map+[max]
-
-        p=[[speech_map],[prob_map]]
+            if max !=0:
+                speech_map=speech_map+[s]
+                prob_map=prob_map+[max]
+            else:
+                speech_map=speech_map+["noun"]
+                prob_map=prob_map+[max]
+        p=[[speech_map],[]]
         return p
        # return [[["noun"] * len(sentence)], []]
 

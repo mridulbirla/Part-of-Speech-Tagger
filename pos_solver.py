@@ -16,6 +16,7 @@
 #
 ##
 ####
+import copy
 
 import random
 import math
@@ -32,9 +33,10 @@ class Solver:
     # Calculate the log of the posterior probability of a given sentence
     #  with a given part-of-speech labeling
     def __init__(self):
-        self.probability_speech={}
-        self.probability_next_speech={}
-        self.probability_word_speech={}
+        self.probability_speech = {}
+        self.probability_next_speech = {}
+        self.probability_word_speech = {}
+        self.probability_first_speech = {}
 
     def posterior(self, sentence, label):
         return 0
@@ -47,22 +49,31 @@ class Solver:
     def train(self, data):
         print "Inside training"
         for line in data:
-            for index in range(0,len(line[1])):
-                if index < (len(line[1]))-1:
-                    x=line[1][index+1].lower()+'_'+line[1][index]
-                    self.probability_next_speech.setdefault(x,0)
-                    self.probability_next_speech[x]+=1
-                x=line[0][index].lower()+'_'+line[1][index]
-                self.probability_word_speech.setdefault(x,0)
-                self.probability_word_speech[x] +=1
-                self.probability_speech.setdefault(line[1][index],0)
+            for index in range(0, len(line[1])):
+                if index ==0:
+                    self.probability_first_speech.setdefault(line[1][0],0)
+                    self.probability_first_speech[line[1][0]]+=1
+                if index < (len(line[1])) - 1:
+                    x = line[1][index + 1].lower() + '_' + line[1][index]
+                    self.probability_next_speech.setdefault(x, 0)
+                    self.probability_next_speech[x] += 1
+                x = line[0][index].lower() + '_' + line[1][index]
+                self.probability_word_speech.setdefault(x, 0)
+                self.probability_word_speech[x] += 1
+                self.probability_speech.setdefault(line[1][index], 0)
                 self.probability_speech[line[1][index]] += 1
-        print "BC"
-        [self.update(self.probability_word_speech, k, sum(self.probability_word_speech.values())) for k in self.probability_word_speech.keys()]
+        print len(self.probability_next_speech.keys())
+        [self.update(self.probability_word_speech, k, sum(self.probability_word_speech.values())) for k in
+         self.probability_word_speech.keys()]
+        [self.update(self.probability_first_speech, k, sum(self.probability_first_speech.values())) for k in
+         self.probability_first_speech.keys()]
         print "B"
-        [self.update(self.probability_next_speech, k, sum(self.probability_next_speech.values())) for k in self.probability_next_speech.keys()]
+        [self.update(self.probability_next_speech, k, sum(self.probability_next_speech.values())) for k in
+         self.probability_next_speech.keys()]
         print "BB"
-        [self.update(self.probability_speech, k, sum(self.probability_speech.values())) for k in self.probability_speech.keys()]
+        [self.update(self.probability_speech, k, sum(self.probability_speech.values())) for k in
+         self.probability_speech.keys()]
+
     # Functions for each algorithm.
     #
     def naive(self, sentence):
@@ -81,21 +92,11 @@ class Solver:
                     continue
                 prob_wrd_spch= self.probability_word_speech[k]
                 sum=0.0
-                '''
-                for speech2 in self.probability_speech.keys():
-                    k=word+'_'+speech2
-                    if k not in self.probability_word_speech.keys():
-                        continue
-                    prob_wrd_spch= self.probability_word_speech[k]
-                    new_prob=0.0
-                    sum+=(prob_wrd_spch*self.probability_speech[speech2])
-                if sum!=0:
-                '''
                 new_prob=(prob_wrd_spch*self.probability_speech[speech])
 
                 if new_prob>max:
-                    s=speech
-                    max=new_prob
+                        s=speech
+                        max=new_prob
             if max !=0:
                 speech_map=speech_map+[s]
                 prob_map=prob_map+[max]
@@ -104,10 +105,53 @@ class Solver:
                 prob_map=prob_map+[max]
         p=[[speech_map],[]]
         return p
-       # return [[["noun"] * len(sentence)], []]
 
     def mcmc(self, sentence, sample_count):
-        return [[["noun"] * len(sentence)] * sample_count, []]
+
+        sample_list = list(sentence)
+        sampled_values = [[]]
+        map(lambda x: sampled_values[0].append('noun'), range(0, len(sample_list)))
+        print sampled_values
+        initial_values = copy.copy(sampled_values[0])
+        speech_list = ['adj', 'adv', 'ADP', 'CONJ', 'DET', 'NOUN', 'NUM', 'PRON', 'PRT', 'VERB', 'X', '.']
+        for i in range(0, 500):
+
+            for j in range(0, len(sample_list)):
+                probability_values=[]
+                for k in range(0, 12):
+                    t = 0
+                    wrd_speech=1
+                    u=1
+                    new_speech = speech_list[k].lower()
+                    if i == 0:
+                        t = self.probability_first_speech[new_speech]
+                    else:
+                        if new_speech + '_' + initial_values[j - 1] in self.probability_next_speech:
+                            t = self.probability_next_speech[new_speech + '_' + initial_values[j - 1]]
+                        else:
+                            probability_values.append(0)
+                            continue
+                    x=sample_list[j]+'_'+new_speech
+                    if x in self.probability_word_speech:
+                        wrd_speech=self.probability_word_speech[x]
+                    else:
+                        probability_values.append(0)
+                        continue
+
+                    if k<len(sample_list)-1:
+                        next_speech=initial_values[k+1]+'_'+new_speech
+                        if next_speech in self.probability_next_speech.keys() :
+                            u=self.probability_next_speech[next_speech]
+                        else:
+                            probability_values.append(0)
+                            continue
+                    probability_values.append(u*t*wrd_speech)
+                initial_values[j]=speech_list[probability_values.index(max(probability_values))].lower()
+            #print initial_values
+            sampled_values.append(initial_values)
+
+            top_sampled_value=sampled_values[len(sampled_values)-5:]
+        return [top_sampled_value, []]
 
     def best(self, sentence):
         return [[["noun"] * len(sentence)], []]
@@ -146,7 +190,6 @@ class Solver:
 
 
 s = Solver()
-d=[]
-
+d = []
 
 s.train(d)

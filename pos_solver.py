@@ -113,7 +113,7 @@ class Solver:
         map(lambda x: sampled_values[0].append('noun'), range(0, len(sample_list)))
         print sampled_values
         initial_values = copy.copy(sampled_values[0])
-        speech_list = ['adj', 'adv', 'ADP', 'CONJ', 'DET', 'NOUN', 'NUM', 'PRON', 'PRT', 'VERB', 'X', '.']
+        speech_list = ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']
         for i in range(0, 500):
 
             for j in range(0, len(sample_list)):
@@ -160,6 +160,47 @@ class Solver:
         return [[["noun"] * len(sentence)], [[0] * len(sentence), ]]
 
     def viterbi(self, sentence):
+        forward_matrix = {}
+        # for x in range(12):
+        #     for y in range(len(sentence)):
+        #         forward_matrix[x,y] = 0
+
+        backward_matrix = {}
+        # for x in range(12):
+        #     for y in range(len(sentence)):
+        #         backward_matrix[x,y] = 0
+
+        #filling rest of the matrix
+        for index_eachword in range(0,len(sentence)):
+            eachword=sentence[index_eachword]
+            #initially for 1st word
+            if eachword == sentence[0]:
+                for speech in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
+                    if speech+'_'+sentence[0] in self.probability_word_speech.keys():
+                        forward_matrix[speech, eachword] = (self.probability_first_speech(speech) * self.probability_word_speech(speech,'_',sentence[0]))
+                    else:
+                        forward_matrix[speech, eachword]=0
+
+            else:
+                for speech in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
+                    max_value = -1
+                    if eachword +'_'+speech in self.probability_word_speech.keys():
+                            emission=self.probability_word_speech[eachword +'_'+speech]
+                    else:
+                        forward_matrix[speech, eachword]=0
+                        continue
+                    for i in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
+                        transition_prob=self.probability_next_speech[speech +'_'+ i]
+                        prev_word = sentence[index_eachword-1]
+                        previous_veterbi_coeff = forward_matrix[i, prev_word]
+                        new_veterbi_coeff = transition_prob * previous_veterbi_coeff
+
+                        if new_veterbi_coeff > max_value:
+                            max_value = new_veterbi_coeff
+                            backward_matrix[speech, eachword] = i
+                    forward_matrix[speech, eachword] = max_value*emission
+
+
         return [[["noun"] * len(sentence)], []]
 
     # This solve() method is called by label.py, so you should keep the interface the

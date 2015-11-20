@@ -169,7 +169,7 @@ class Solver:
         # for x in range(12):
         #     for y in range(len(sentence)):
         #         backward_matrix[x,y] = 0
-
+        path = []
         #filling rest of the matrix
         for index_eachword in range(0,len(sentence)):
             eachword=sentence[index_eachword]
@@ -200,8 +200,22 @@ class Solver:
                             backward_matrix[speech, eachword] = i
                     forward_matrix[speech, eachword] = max_value*emission
 
+            last_max_value = -1
+            if eachword == sentence[len(sentence)-1]:
+                for k in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
+                    if last_max_value < forward_matrix[k, eachword]:
+                        last_max_tag = k
 
-        return [[["noun"] * len(sentence)], []]
+        path.append(last_max_value)
+
+        temp_var = last_max_value
+        for i in range (1, len(sentence)):
+            path.append(backward_matrix[temp_var, sentence[len(sentence)-i]])
+            temp_var= backward_matrix[temp_var, sentence[len(sentence)-i]]
+
+
+
+        return [path, []]
 
     # This solve() method is called by label.py, so you should keep the interface the
     #  same, but you can change the code itself. 

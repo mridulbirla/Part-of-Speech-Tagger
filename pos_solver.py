@@ -37,7 +37,8 @@ class Solver:
         self.probability_next_speech = {}
         self.probability_word_speech = {}
         self.probability_first_speech = {}
-
+        self.all_word_speech_keys=[]
+        self.all_next_speech_keys=[]
     def posterior(self, sentence, label):
         return 0
 
@@ -48,7 +49,9 @@ class Solver:
     #
     def train(self, data):
         print "Inside training"
+        total_count=0
         for line in data:
+            total_count+=len(line[1])
             for index in range(0, len(line[1])):
                 if index ==0:
                     self.probability_first_speech.setdefault(line[1][0],0)
@@ -62,36 +65,39 @@ class Solver:
                 self.probability_word_speech[x] += 1
                 self.probability_speech.setdefault(line[1][index], 0)
                 self.probability_speech[line[1][index]] += 1
-        print len(self.probability_next_speech.keys())
-        [self.update(self.probability_word_speech, k, sum(self.probability_word_speech.values())) for k in
-         self.probability_word_speech.keys()]
-        [self.update(self.probability_first_speech, k, sum(self.probability_first_speech.values())) for k in
-         self.probability_first_speech.keys()]
-        print "B"
-        [self.update(self.probability_next_speech, k, sum(self.probability_next_speech.values())) for k in
-         self.probability_next_speech.keys()]
-        print "BB"
-        [self.update(self.probability_speech, k, sum(self.probability_speech.values())) for k in
-         self.probability_speech.keys()]
 
+        #s=min(self.probability_next_speech.values())
+        s=1
+        self.probability_next_speech['x_pron'] = 1
+        [self.update(self.probability_next_speech, k, self.probability_speech[k.split('_')[1]]) for k in
+         self.probability_next_speech.keys()]
+
+        [self.update(self.probability_word_speech, k, self.probability_speech[k.split('_')[1]]) for k in
+         self.probability_word_speech.keys()]
+
+        [self.update(self.probability_speech, k, total_count) for k in
+         self.probability_speech.keys()]
+        count_first_speech=sum(self.probability_first_speech.values())
+        [self.update(self.probability_first_speech, k, count_first_speech) for k in
+         self.probability_first_speech.keys()]
+        self.all_next_speech_keys=self.probability_next_speech.keys()
+        self.all_word_speech_keys=self.probability_word_speech.keys()
+        print "Training Complete"
     # Functions for each algorithm.
     #
     def naive(self, sentence):
         speech_map=[]
         prob_map=[]
-        flag=0
+        '''
         for word in sentence:
             max=0
             s=''
-            flag=1
-            if  word=="calmly":
-                print "a"
+
             for speech in self.probability_speech.keys():
                 k=word+'_'+speech
                 if k not in self.probability_word_speech.keys():
                     continue
                 prob_wrd_spch= self.probability_word_speech[k]
-                sum=0.0
                 new_prob=(prob_wrd_spch*self.probability_speech[speech])
 
                 if new_prob>max:
@@ -100,21 +106,24 @@ class Solver:
             if max !=0:
                 speech_map=speech_map+[s]
                 prob_map=prob_map+[max]
+
             else:
                 speech_map=speech_map+["noun"]
                 prob_map=prob_map+[max]
+
         p=[[speech_map],[]]
         return p
+        '''
+        return [[["noun"] * len(sentence)], []]
 
     def mcmc(self, sentence, sample_count):
-
+        
         sample_list = list(sentence)
         sampled_values = [[]]
         map(lambda x: sampled_values[0].append('noun'), range(0, len(sample_list)))
-        print sampled_values
         initial_values = copy.copy(sampled_values[0])
         speech_list = ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']
-        for i in range(0, 500):
+        for i in range(0, 200):
 
             for j in range(0, len(sample_list)):
                 probability_values=[]
@@ -122,7 +131,7 @@ class Solver:
                     t = 0
                     wrd_speech=1
                     u=1
-                    new_speech = speech_list[k].lower()
+                    new_speech = speech_list[k]
                     if i == 0:
                         t = self.probability_first_speech[new_speech]
                     else:
@@ -146,12 +155,13 @@ class Solver:
                             probability_values.append(0)
                             continue
                     probability_values.append(u*t*wrd_speech)
-                initial_values[j]=speech_list[probability_values.index(max(probability_values))].lower()
-            #print initial_values
+                initial_values[j]=speech_list[probability_values.index(max(probability_values))]
             sampled_values.append(initial_values)
-
             top_sampled_value=sampled_values[len(sampled_values)-5:]
+
         return [top_sampled_value, []]
+
+        #return [[["noun"] * len(sentence)], []]
 
     def best(self, sentence):
         return [[["noun"] * len(sentence)], []]
@@ -161,61 +171,79 @@ class Solver:
 
     def viterbi(self, sentence):
         forward_matrix = {}
-        # for x in range(12):
-        #     for y in range(len(sentence)):
-        #         forward_matrix[x,y] = 0
-
-        backward_matrix = {}
-        # for x in range(12):
-        #     for y in range(len(sentence)):
-        #         backward_matrix[x,y] = 0
         path = []
-        #filling rest of the matrix
+        speech_list=['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']
+        previous_flag={}
         for index_eachword in range(0,len(sentence)):
             eachword=sentence[index_eachword]
-            #initially for 1st word
-            if eachword == sentence[0]:
-                for speech in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
-                    if speech+'_'+sentence[0] in self.probability_word_speech.keys():
-                        forward_matrix[speech, eachword] = (self.probability_first_speech(speech) * self.probability_word_speech(speech,'_',sentence[0]))
+            last_max_value = 0
+            if eachword[len(eachword)-1]=='s' and eachword[len(eachword)-2]=="'":
+                eachword=eachword[0:len(eachword)-2]
+            previous_flag[index_eachword]=0
+            if index_eachword == 0:
+                for speech in speech_list:
+                    if sentence[0]+'_'+speech in self.all_word_speech_keys:
+                        forward_matrix[speech, index_eachword] = ((self.probability_first_speech[speech] * self.probability_word_speech[sentence[0]+'_'+speech]),-1)
+                        previous_flag[index_eachword]=1
                     else:
-                        forward_matrix[speech, eachword]=0
-
+                        forward_matrix[speech, index_eachword] =(float(4.22316915059e-10) * self.probability_first_speech[speech],-1)
+                        previous_flag[index_eachword]=1
+                    if index_eachword==len(sentence)-1 and last_max_value <forward_matrix[speech, index_eachword][0]:
+                        last_max_value=forward_matrix[speech, len(sentence)-1][0]
+                        last_max_tag = speech
             else:
-                for speech in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
-                    max_value = -1
-                    if eachword +'_'+speech in self.probability_word_speech.keys():
+                temp_back_pointer=-1
+                for speech in speech_list:
+                    max_value = 0
+                    if eachword +'_'+speech in self.all_word_speech_keys:
                             emission=self.probability_word_speech[eachword +'_'+speech]
+                            previous_flag[index_eachword]=1
                     else:
-                        forward_matrix[speech, eachword]=0
-                        continue
-                    for i in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
-                        transition_prob=self.probability_next_speech[speech +'_'+ i]
-                        prev_word = sentence[index_eachword-1]
-                        previous_veterbi_coeff = forward_matrix[i, prev_word]
-                        new_veterbi_coeff = transition_prob * previous_veterbi_coeff
-
+                            emission=float(4.22316915059e-10)
+                            previous_flag[index_eachword]=1
+                    for i in speech_list:
+                        if speech +'_'+ i in self.all_next_speech_keys:
+                            transition_prob=self.probability_next_speech[speech +'_'+ i]
+                        else:
+                            transition_prob=0
+                        previous_veterbi_coeff = forward_matrix[i, index_eachword-1][0]
+                        new_veterbi_coeff = float(transition_prob) * previous_veterbi_coeff
                         if new_veterbi_coeff > max_value:
-                            max_value = new_veterbi_coeff
-                            backward_matrix[speech, eachword] = i
-                    forward_matrix[speech, eachword] = max_value*emission
+                            max_value = float(new_veterbi_coeff)
+                            temp_back_pointer=i
+#
+                    forward_matrix[speech, index_eachword] = (float(max_value)*emission,temp_back_pointer)
+                    if index_eachword==len(sentence)-1 and last_max_value <forward_matrix[speech, index_eachword][0]:
+                        last_max_value=forward_matrix[speech, len(sentence)-1][0]
+                        last_max_tag = speech
+            '''
+            last_max_value = 0
+            if index_eachword==len(sentence)-1:
+                for k in speech_list:
 
-            last_max_value = -1
-            if eachword == sentence[len(sentence)-1]:
-                for k in ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']:
-                    if last_max_value < forward_matrix[k, eachword]:
-                        last_max_tag = k
+                        if last_max_value < forward_matrix[k, len(sentence)-1][0]:
+                            last_max_tag = k
 
-        path.append(last_max_value)
-
-        temp_var = last_max_value
-        for i in range (1, len(sentence)):
-            path.append(backward_matrix[temp_var, sentence[len(sentence)-i]])
-            temp_var= backward_matrix[temp_var, sentence[len(sentence)-i]]
+                            #previous_tag=backward_matrix[k,len(sentence)-1]
+            '''
 
 
+        #temp_var = previous_tag
+        for i in list(reversed(range(0,len(sentence)))):
+            # get max tag used
+            path.append(last_max_tag)
+            last_max_tag=forward_matrix[last_max_tag, i][1]
 
-        return [path, []]
+
+
+
+        path =list(reversed(path))
+
+        return [[path], []]
+
+
+       #return [[["noun"] * len(sentence)], []]
+
 
     # This solve() method is called by label.py, so you should keep the interface the
     #  same, but you can change the code itself. 
@@ -243,8 +271,3 @@ class Solver:
         else:
             print "Unknown algorithm!"
 
-
-s = Solver()
-d = []
-
-s.train(d)

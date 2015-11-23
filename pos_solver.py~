@@ -84,7 +84,7 @@
 # After getting the sequence of speeches by this we compare the forward matrix value of original viterbi and new viterbi
 # for the particular word and speech and the maximum of it is kept in the new list of part of speech.
 #
-# Timing for each part : Viterbi And Naive takies 10% of the total running time. MCMC takkes 26% of toal running time
+# Timing for each part : 
 #
 #
 import copy
@@ -129,12 +129,12 @@ class Solver:
             else:
                 probab_next_speech = self.probability_next_speech[label[i] + '_' + label[i - 1]]
             probab_speech = self.probability_speech[speech]
-            mult *= probab_wrd_speech * probab_next_speech
+            mult *= probab_wrd_speech * probab_speech
             #sum += probab_wrd_speech * probab_speech
         try:
             answer = math.log(mult)
         except ValueError:
-            answer =0
+            print "a"
 
         return answer
 
@@ -233,7 +233,7 @@ class Solver:
         map(lambda x: self.sampled_values[0].append('noun'), range(0, len(sample_list)))
         initial_values = copy.copy(self.sampled_values[0])
         speech_list = ['adj', 'adv', 'adp', 'conj', 'det', 'noun', 'num', 'pron', 'prt', 'verb', 'x', '.']
-        for i in range(0, 200):  # sample generation
+        for i in range(0, 500):  # sample generation
 
             for j in range(0, len(sample_list)):
                 probability_values = []
@@ -274,7 +274,7 @@ class Solver:
 
                 initial_values[j] = speech_list[o]
             self.sampled_values.append(initial_values)
-        top_sampled_value = self.sampled_values[len(self.sampled_values) - sample_count:]
+        top_sampled_value = self.sampled_values[len(self.sampled_values) - 5:]
 
         return [top_sampled_value, []]
 
